@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King's Core Server Panel</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh}
+.topbar{background:#12121a;border-bottom:1px solid #2a2a3a;display:flex;align-items:center;padding:0 20px;height:50px;position:sticky;top:0;z-index:100}
+.topbar .logo{font-size:18px;font-weight:700;color:#4488ff;margin-right:30px}
+.topbar .tabs{display:flex;gap:0}
+.topbar .tab{padding:14px 20px;cursor:pointer;border-bottom:2px solid transparent;color:#888;transition:all .2s;font-size:14px}
+.topbar .tab:hover{color:#ccc;background:#1a1a2a}
+.topbar .tab.active{color:#4488ff;border-bottom-color:#4488ff;background:#1a1a2a}
+.content{padding:20px 30px;max-width:1200px;margin:0 auto}
+.card{background:#12121a;border:1px solid #2a2a3a;border-radius:8px;padding:20px;margin-bottom:16px}
+.card h3{color:#4488ff;margin-bottom:12px;font-size:16px}
+.stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1a1a2a}
+.stat-label{color:#888}
+.stat-value{color:#e0e0e0;font-weight:600}
+.stat-value.green{color:#44ff88}
+.stat-value.red{color:#ff4444}
+.stat-value.yellow{color:#ffaa44}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:768px){.grid{grid-template-columns:1fr}}
+.progress-bar{background:#1a1a2a;border-radius:4px;height:20px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;background:linear-gradient(90deg,#4488ff,#44ff88);border-radius:4px;transition:width .5s}
+.player-list{list-style:none}
+.player-list li{padding:8px 12px;border-bottom:1px solid #1a1a2a;display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.online{background:#44ff88}
+.dot.offline{background:#ff4444}
+select,input[type=number],button{background:#1a1a2a;border:1px solid #2a2a3a;color:#e0e0e0;padding:8px 12px;border-radius:4px;font-size:14px}
+select:focus,input:focus{outline:none;border-color:#4488ff}
+button{cursor:pointer;background:#4488ff;border-color:#4488ff;font-weight:600;transition:opacity .2s}
+button:hover{opacity:.85}
+button.danger{background:#ff4444;border-color:#ff4444}
+.time-picker{display:flex;gap:8px;align-items:center}
+.time-picker input{width:60px;text-align:center}
+.hidden{display:none}
+.slider-group{display:flex;align-items:center;gap:12px;margin:8px 0}
+.slider-group label{min-width:60px;color:#888}
+.slider-group input[type=range]{flex:1;accent-color:#4488ff}
+.slider-group .val{min-width:30px;text-align:right;color:#4488ff;font-weight:600}
+.id-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:20px}
+.id-screen input{background:#1a1a2a;border:1px solid #2a2a3a;color:#e0e0e0;padding:12px 20px;border-radius:4px;font-size:18px;font-family:monospace;letter-spacing:4px;width:350px;text-align:center}
+.id-screen input:focus{outline:none;border-color:#4488ff}
+.id-screen h2{color:#4488ff}
+.id-screen p{color:#888;font-size:14px}
+.id-screen button{padding:12px 40px;font-size:16px}
+.offline-banner{background:#ff444422;border:1px solid #ff4444;border-radius:8px;padding:16px;margin-bottom:16px;text-align:center;color:#ff4444;font-weight:600}
+</style>
+</head>
+<body>
+<div id="idpage" class="id-screen">
+<h2>King's Core Panel</h2>
+<p>Enter your server's 12-digit ID to access the panel</p>
+<input type="text" id="id-input" maxlength="12" placeholder="XXXXXXXXXXXX" onkeydown="if(event.key==='Enter')connectToServer()">
+<button onclick="connectToServer()">Connect</button>
+</div>
+<div id="panelpage" class="hidden">
+<div class="topbar">
+<div class="logo">King's Core</div>
+<div class="tabs">
+<div class="tab active" onclick="showTab('general')">General</div>
+<div class="tab" onclick="showTab('resources')">Resources</div>
+<div class="tab" onclick="showTab('players')">Players</div>
+<div class="tab" onclick="showTab('characters')">Characters</div>
+<div class="tab" onclick="showTab('settings')">Settings</div>
+</div>
+</div>
+<div class="content">
+<div id="offline-banner" class="offline-banner hidden">Server is offline or data has not been updated yet</div>
+<div id="general" class="page">
+<div class="grid">
+<div class="card">
+<h3>Server Info</h3>
+<div class="stat-row"><span class="stat-label">Address</span><span class="stat-value green" id="s-addr">-</span></div>
+<div class="stat-row"><span class="stat-label">Port</span><span class="stat-value green" id="s-port">-</span></div>
+<div class="stat-row"><span class="stat-label">Version</span><span class="stat-value" id="s-version">-</span></div>
+<div class="stat-row"><span class="stat-label">MOTD</span><span class="stat-value" id="s-motd">-</span></div>
+<div class="stat-row"><span class="stat-label">Uptime</span><span class="stat-value" id="s-uptime">-</span></div>
+</div>
+<div class="card">
+<h3>Players</h3>
+<div class="stat-row"><span class="stat-label">Online</span><span class="stat-value green" id="s-players">-</span></div>
+<div class="stat-row"><span class="stat-label">Max</span><span class="stat-value" id="s-max">-</span></div>
+<div class="progress-bar"><div class="progress-fill" id="s-playerbar" style="width:0%"></div></div>
+</div>
+<div class="card">
+<h3>Memory</h3>
+<div class="stat-row"><span class="stat-label">Used</span><span class="stat-value" id="s-memused">-</span></div>
+<div class="stat-row"><span class="stat-label">Total</span><span class="stat-value" id="s-memtotal">-</span></div>
+<div class="progress-bar"><div class="progress-fill" id="s-membar" style="width:0%"></div></div>
+</div>
+<div class="card">
+<h3>CPU</h3>
+<div class="stat-row"><span class="stat-label">Cores</span><span class="stat-value" id="s-cpu">-</span></div>
+<div class="stat-row"><span class="stat-label">Tick Rate</span><span class="stat-value" id="s-tick">-</span></div>
+</div>
+</div>
+</div>
+<div id="resources" class="page hidden">
+<div class="card">
+<h3>Data Files</h3>
+<div id="res-list"></div>
+</div>
+</div>
+<div id="players" class="page hidden">
+<div class="card">
+<h3>Online Players</h3>
+<ul class="player-list" id="pl-list"></ul>
+</div>
+</div>
+<div id="characters" class="page hidden">
+<div class="card">
+<h3>All Characters</h3>
+<ul class="player-list" id="ch-list"></ul>
+</div>
+</div>
+<div id="settings" class="page hidden">
+<div class="card">
+<h3>World Regeneration</h3>
+<div class="stat-row">
+<span class="stat-label">Enable Regeneration</span>
+<input type="checkbox" id="set-regen" onchange="saveSettings()">
+</div>
+<div class="stat-row">
+<span class="stat-label">Mode</span>
+<select id="set-mode" onchange="onModeChange();saveSettings()">
+<option value="never">Never</option>
+<option value="day">Each Day</option>
+<option value="week">Each Week</option>
+<option value="month">Each Month</option>
+<option value="year">Each Year</option>
+<option value="custom">Custom</option>
+</select>
+</div>
+<div id="custom-options" class="hidden">
+<div class="slider-group"><label>Days</label><input type="range" id="set-days" min="0" max="30" value="0" oninput="updateSlider(this,'v-days')"><span class="val" id="v-days">0</span></div>
+<div class="slider-group"><label>Weeks</label><input type="range" id="set-weeks" min="0" max="4" value="0" oninput="updateSlider(this,'v-weeks')"><span class="val" id="v-weeks">0</span></div>
+<div class="slider-group"><label>Months</label><input type="range" id="set-months" min="0" max="12" value="0" oninput="updateSlider(this,'v-months')"><span class="val" id="v-months">0</span></div>
+<div class="slider-group"><label>Years</label><input type="range" id="set-years" min="0" max="1" value="0" oninput="updateSlider(this,'v-years')"><span class="val" id="v-years">0</span></div>
+</div>
+<div class="stat-row" id="time-row">
+<span class="stat-label">Time</span>
+<div class="time-picker">
+<input type="number" id="set-hours" min="1" max="12" value="12" onchange="saveSettings()">
+<span>:</span>
+<input type="number" id="set-minutes" min="0" max="59" value="0" onchange="saveSettings()">
+<select id="set-ampm" onchange="saveSettings()"><option value="AM">AM</option><option value="PM">PM</option></select>
+</div>
+</div>
+<div class="stat-row" id="next-regen-row">
+<span class="stat-label">Next Regeneration</span>
+<span class="stat-value" id="s-nextregen">-</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+var SERVER_ID='';
+var SERVER_DATA=null;
+var REPO='kingyorkson/KingsCore-AP';
+var RAW='https://raw.githubusercontent.com/'+REPO+'/main/data/';
+
+function init(){
+var hash=window.location.hash.replace('#/','').replace('#','');
+if(hash&&hash.length===12){SERVER_ID=hash.toUpperCase();document.getElementById('id-input').value=SERVER_ID;connectToServer();}
+}
+function connectToServer(){
+var id=document.getElementById('id-input').value.trim().toUpperCase();
+if(id.length!==12){alert('Server ID must be exactly 12 characters');return;}
+SERVER_ID=id;
+window.location.hash='#/'+id;
+document.getElementById('idpage').classList.add('hidden');
+document.getElementById('panelpage').classList.remove('hidden');
+loadData();
+}
+function loadData(){
+fetch(RAW+SERVER_ID+'.json?t='+Date.now()).then(function(r){if(!r.ok)throw new Error('not found');return r.json();}).then(function(d){
+SERVER_DATA=d;
+document.getElementById('offline-banner').classList.add('hidden');
+renderAll();
+}).catch(function(){
+document.getElementById('offline-banner').classList.remove('hidden');
+});
+}
+function renderAll(){
+if(!SERVER_DATA)return;
+var d=SERVER_DATA;
+var addrDisplay=d.address==='0.0.0.0'?'All Interfaces':d.address;
+document.getElementById('s-addr').textContent=addrDisplay;
+document.getElementById('s-port').textContent=d.port;
+document.getElementById('s-version').textContent=d.version||'-';
+document.getElementById('s-motd').textContent=d.motd||'-';
+document.getElementById('s-uptime').textContent=fmtTime(d.uptime||0);
+document.getElementById('s-players').textContent=d.players?d.players.online:'0';
+document.getElementById('s-max').textContent=d.players?d.players.max:'0';
+if(d.players&&d.players.max>0)document.getElementById('s-playerbar').style.width=(d.players.online/d.players.max*100)+'%';
+document.getElementById('s-memused').textContent=fmt(d.memory?d.memory.used:0);
+document.getElementById('s-memtotal').textContent=fmt(d.memory?d.memory.total:0);
+if(d.memory&&d.memory.total>0)document.getElementById('s-membar').style.width=(d.memory.used/d.memory.total*100)+'%';
+document.getElementById('s-cpu').textContent=(d.cpu||0)+' cores';
+document.getElementById('s-tick').textContent=(d.tickRate||0).toFixed(1)+' ms';
+}
+function showTab(name){
+document.querySelectorAll('.page').forEach(function(p){p.classList.add('hidden')});
+document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
+document.getElementById(name).classList.remove('hidden');
+document.querySelector('.tab[onclick="showTab(\''+name+'\')"]').classList.add('active');
+if(name==='general')renderAll();
+if(name==='resources')loadResources();
+if(name==='players')loadPlayers();
+if(name==='characters')loadCharacters();
+if(name==='settings')loadSettings();
+}
+function fmt(b){if(b>1073741824)return(b/1073741824).toFixed(1)+' GB';if(b>1048576)return(b/1048576).toFixed(1)+' MB';return(b/1024).toFixed(1)+' KB'}
+function fmtTime(s){var h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h+'h '+m+'m'}
+function loadResources(){
+if(!SERVER_DATA||!SERVER_DATA.resources)return;
+var d=SERVER_DATA.resources;
+var h='';
+var items=[['Data Folder',d.dataFolder],['slots.dat',d.slotsFile],['rooms.dat',d.roomsFile],['config.dat',d.configFile],['kcore_ops.dat',d.kcoreOpsFile],['lobbies.dat',d.lobbiesFile],['owner.dat',d.ownerFile]];
+items.forEach(function(i){h+='<div class="stat-row"><span class="stat-label">'+i[0]+'</span><span class="stat-value '+(i[1]?'green':'red')+'">'+(i[1]?'Found':'Missing')+'</span></div>';});
+h+='<div class="stat-row"><span class="stat-label">Player Folders</span><span class="stat-value">'+(d.playerFolders||0)+'</span></div>';
+h+='<div class="stat-row"><span class="stat-label">With Currency</span><span class="stat-value">'+(d.withCurrency||0)+'/'+(d.playerFolders||0)+'</span></div>';
+h+='<div class="stat-row"><span class="stat-label">Rooms Created</span><span class="stat-value">'+(d.roomCount||0)+'</span></div>';
+document.getElementById('res-list').innerHTML=h;
+}
+function loadPlayers(){
+if(!SERVER_DATA||!SERVER_DATA.onlinePlayers)return;
+var h='';
+var p=SERVER_DATA.onlinePlayers;
+if(p.length===0)h='<li style="color:#888">No players online</li>';
+p.forEach(function(n){h+='<li><span class="dot online"></span>'+n+'</li>';});
+document.getElementById('pl-list').innerHTML=h;
+}
+function loadCharacters(){
+if(!SERVER_DATA||!SERVER_DATA.characters)return;
+var h='';
+var c=SERVER_DATA.characters;
+if(c.length===0)h='<li style="color:#888">No characters found</li>';
+c.forEach(function(ch){h+='<li><span class="dot '+(ch.online?'online':'offline')+'"></span>'+ch.firstName+' '+ch.lastName+'</li>';});
+document.getElementById('ch-list').innerHTML=h;
+}
+function loadSettings(){
+if(!SERVER_DATA||!SERVER_DATA.settings)return;
+var d=SERVER_DATA.settings;
+document.getElementById('set-regen').checked=d.regenEnabled;
+document.getElementById('set-mode').value=d.regenMode;
+document.getElementById('set-days').value=d.regenCustomDays;
+document.getElementById('set-weeks').value=d.regenCustomWeeks;
+document.getElementById('set-months').value=d.regenCustomMonths;
+document.getElementById('set-years').value=d.regenCustomYears;
+document.getElementById('v-days').textContent=d.regenCustomDays;
+document.getElementById('v-weeks').textContent=d.regenCustomWeeks;
+document.getElementById('v-months').textContent=d.regenCustomMonths;
+document.getElementById('v-years').textContent=d.regenCustomYears;
+document.getElementById('set-hours').value=d.regenTimeHours;
+document.getElementById('set-minutes').value=d.regenTimeMinutes;
+onModeChange();
+if(d.nextRegen>0){var dt=new Date(d.nextRegen);document.getElementById('s-nextregen').textContent=dt.toLocaleString();}else{document.getElementById('s-nextregen').textContent='Never';}
+}
+function onModeChange(){
+var m=document.getElementById('set-mode').value;
+document.getElementById('custom-options').classList.toggle('hidden',m!=='custom');
+document.getElementById('time-row').classList.toggle('hidden',m==='never');
+}
+function updateSlider(el,id){document.getElementById(id).textContent=el.value;}
+function saveSettings(){
+var body=JSON.stringify({
+regenEnabled:document.getElementById('set-regen').checked,
+regenMode:document.getElementById('set-mode').value,
+regenCustomDays:parseInt(document.getElementById('set-days').value),
+regenCustomWeeks:parseInt(document.getElementById('set-weeks').value),
+regenCustomMonths:parseInt(document.getElementById('set-months').value),
+regenCustomYears:parseInt(document.getElementById('set-years').value),
+regenTimeHours:parseInt(document.getElementById('set-hours').value),
+regenTimeMinutes:parseInt(document.getElementById('set-minutes').value)
+});
+fetch('https://api.github.com/repos/'+REPO+'/contents/settings/'+SERVER_ID+'.json',{
+method:'PUT',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({message:'Update settings for '+SERVER_ID,content:btoa(body),sha:window._settingsSha||''})
+}).then(function(r){return r.json();}).then(function(d){if(d.content)window._settingsSha=d.content.sha;alert('Settings saved! Server will pick up changes on next push.');}).catch(function(){alert('Failed to save settings');});
+}
+setInterval(function(){if(SERVER_ID)loadData();},10000);
+init();
+</script>
+</body>
+</html>
